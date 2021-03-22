@@ -1,0 +1,121 @@
+<html xmlns="http://www.w3.org/1999/html">
+<body>
+<section>
+    <h1>Add New Row</h1>
+    <form>
+        <input id = "name" type="text" placeholder="Enter your name"></input>
+        <input id = "date" type="text" placeholder="Enter your birth date"></input>
+        <input id = "friend_date" type="text" placeholder="Enter your friend birth date"></input>
+        <input type="button" value="Compute Row" onclick="compute_statistics()">
+    </form>
+</section>
+<section id="output" style="display: none">
+    <span>P(x,y)</span>
+    <table id="p" border="1"></table>
+    <span>C(x,y)</span>
+    <table id="c" border="1"></table>
+    <span>Mutual information: </span>
+    <span id="mutual_info"></span>
+</section>
+<script>
+    function compute_statistics() {
+        let name = document.getElementById("name")["value"]
+        let date = document.getElementById("date")["value"]
+        let friend_date = document.getElementById("friend_date")["value"]
+        let long_name = get_long_name(name, date)
+        let friend_long_name = get_long_name(name, friend_date)
+        let length = 10000
+        let p_first_second = new Map()
+        let p_first = new Map()
+        let p_second = new Map()
+        for (let i = 0; i < length; i++) {
+            let first = long_name[i % long_name.length]
+            let second = friend_long_name[i % friend_long_name.length]
+            if (!p_first.has(first)) {
+                p_first.set(first, 0)
+                p_first_second.set(first, new Map())
+            }
+            if (!p_second.has(second)) {
+                p_second.set(second, 0)
+            }
+            if (!p_first_second.get(first).has(second)) {
+                p_first_second.get(first).set(second, 0)
+            }
+            p_first.set(first, p_first.get(first) + 1)
+            p_second.set(second, p_second.get(second) + 1)
+            p_first_second.get(first).set(second, p_first_second.get(first).get(second) + 1)
+        }
+        for (let key of p_first_second.keys()) {
+            p_first.set(key, p_first.get(key) / length)
+        }
+        for (let key of p_second.keys()) {
+            p_second.set(key, p_second.get(key) / length)
+        }
+        console.log(p_first)
+        console.log(p_second)
+        let information = 0
+        for (let first_key of p_first_second.keys()) {
+            let m = p_first_second.get(first_key)
+            for (let second_key of m.keys()) {
+                m.set(second_key, m.get(second_key) / length)
+                let h = m.get(second_key)
+                    * Math.log2(m.get(second_key) / (p_first.get(first_key) * p_second.get(second_key)))
+                console.log(`${first_key} ${second_key} ${h}`)
+                information += h
+            }
+        }
+        let c_first_second = new Map()
+        for (let first_key of p_first_second.keys()) {
+            c_first_second.set(first_key, new Map())
+            let m = p_first_second.get(first_key)
+            for (let second_key of m.keys()) {
+                let c = m.get(second_key) / (p_first.get(first_key) * p_second.get(second_key))
+                c_first_second.get(first_key).set(second_key, c)
+            }
+        }
+        create_table('p', p_first, p_second, p_first_second)
+        create_table('c', p_first, p_second, c_first_second)
+        document.getElementById('mutual_info').innerText = information.toString()
+        document.getElementById('output').style.display = 'block'
+    }
+
+    function create_table(table_id, rows, columns, values) {
+        document.getElementById(table_id).innerHTML = "";
+        let table = document.getElementById(table_id)
+        let head = document.createElement('tr')
+        add_value_to_row(head, '')
+        for (let k of columns.keys()) {
+            add_value_to_row(head, k)
+        }
+        table.appendChild(head)
+        for (let f_k of rows.keys()) {
+            let row = document.createElement('tr')
+            add_value_to_row(row, f_k)
+            for (let s_k of columns.keys()) {
+                let h = values.get(f_k).has(s_k) ? values.get(f_k).get(s_k) : 0
+                add_value_to_row(row, h)
+            }
+            table.appendChild(row)
+        }
+    }
+
+    function add_value_to_row(row, value) {
+        let cell = document.createElement('td')
+        let cellText = document.createTextNode(value)
+        cell.appendChild(cellText)
+        row.appendChild(cell)
+    }
+
+    function get_long_name(name, birth_date) {
+        birth_date = birth_date.replace('0',"");
+        let long_name = ""
+        for (let i = 0; i < name.length; i++) {
+            for (let j = 0; j < birth_date[i]; j++) {
+                long_name += name[i];
+            }
+        }
+        return long_name
+    }
+</script>
+</body>
+</html>
